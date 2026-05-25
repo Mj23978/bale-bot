@@ -157,7 +157,9 @@ async def send_reply(message, data, filename, media_type="document", prefix="�
             "audio":   message.reply_audio,
             "photo":   message.reply_photo,
         }.get(media_type, message.reply_document)
-        await fn(data, caption=caption)
+        buf = io.BytesIO(data)
+        buf.name = filename
+        await fn(buf, caption=caption)
     else:
         parts = split_to_parts(data, filename)
         total = len(parts)
@@ -165,10 +167,14 @@ async def send_reply(message, data, filename, media_type="document", prefix="�
             f"📦 File too large ({len(data)/1024/1024:.1f} MB), "
             f"sending in {total} parts…")
         for i, (pd, pn) in enumerate(parts):
+            buf = io.BytesIO(pd)
+            buf.name = pn
             await message.reply_document(
-                pd,
+                buf,
                 caption=f"{prefix} {filename} — Part {i+1}/{total}"
             )
+            if i < total - 1:
+                await asyncio.sleep(1)  # Brief pause between parts to avoid rate limits
         await safe_reply(message,
             f"✅ Done — {total} parts.\n"
             "Extract each zip, then join the inner files:\n"
@@ -203,6 +209,8 @@ async def send_to_chat(client, chat_id, data, filename,
                 chat_id, buf,
                 caption=f"{prefix} {filename} — Part {i+1}/{total}"
             )
+            if i < total - 1:
+                await asyncio.sleep(1)  # Brief pause between parts to avoid rate limits
         await client.send_message(chat_id,
             f"✅ {total} parts sent. Extract zips and join inner files.")
 
