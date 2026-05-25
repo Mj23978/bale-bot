@@ -16,6 +16,10 @@ class Config:
     # Telegram Bot (for sync feature)
     TG_TOKEN: str = os.getenv("TG_TOKEN", "")
 
+    # Local Telegram Bot API Server URL (optional — removes 20MB download limit, up to 2GB)
+    # Set to e.g. "http://localhost:8081" if running a local TG Bot API server
+    TG_API_URL: str = os.getenv("TG_API_URL", "")
+
     # Web Server
     WEB_HOST: str = os.getenv("WEB_HOST", "0.0.0.0")
     WEB_PORT: int = int(os.getenv("WEB_PORT", "8080"))

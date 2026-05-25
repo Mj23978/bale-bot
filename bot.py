@@ -655,14 +655,19 @@ class TelegramSync:
 
         async def tg_start(update, context):
             await update.message.reply_text(
-                "👋 TG → Bale sync active!\nSend a file to forward."
+                "👋 TG → Bale sync active!\nSend any file (no local limit) to split and forward to Bale."
             )
 
-        self.app = (
-            ApplicationBuilder()
-            .token(self.token)
-            .build()
-        )
+        # Build application and optionally bind to a local Telegram Bot API Server
+        builder = ApplicationBuilder().token(self.token)
+
+        # Support for customized local server paths if present in config (extends 20MB limit up to 2GB)
+        if cfg.Config.TG_API_URL:
+            log.info("Using local Telegram Bot API Server at %s", cfg.Config.TG_API_URL)
+            builder.base_url(cfg.Config.TG_API_URL)
+            builder.local_mode(True)
+
+        self.app = builder.build()
         self.app.add_handler(CommandHandler("start", tg_start))
         self.app.add_handler(MessageHandler(
             filters.Document.ALL | filters.PHOTO |
@@ -695,21 +700,13 @@ class TelegramSync:
             await msg.reply_text("❌ Media type not recognized.")
             return
 
-        await msg.reply_text("⏳ Downloading from Telegram…")
+        await msg.reply_text("⏳ Downloading file from Telegram…")
 
         try:
             attachment = msg.effective_attachment
-            tg_file_size = getattr(attachment, 'file_size', None) or 0
-            TG_DOWNLOAD_LIMIT = 20 * 1024 * 1024
-
-            if tg_file_size > TG_DOWNLOAD_LIMIT:
-                await msg.reply_text(
-                    f"⚠️ File is too large for Telegram Bot API download limits.\n"
-                    f"Size: {tg_file_size/1024/1024:.1f} MB (Limit: 20 MB)"
-                )
-                return
-
             tg_file = await attachment.get_file()
+
+            # Download file from Telegram to memory buffer
             data = await tg_file.download_as_bytearray()
             data = bytes(data)
 
@@ -719,13 +716,22 @@ class TelegramSync:
             size_mb = len(data) / 1024 / 1024
             await msg.reply_text(f"⏳ Forwarding to Bale… ({size_mb:.1f} MB)")
 
-            # We can run directly on this event loop without crossing thread boundaries
+            # Files will automatically split inside `send_to_chat` if they exceed the 20MB Bale limit
             await send_to_chat(self.bale, int(bale_id), data, filename, mtype, "📁")
-            await msg.reply_text("✅ Sent to Bale!")
+            await msg.reply_text("✅ File synced and sent to Bale!")
 
         except Exception as e:
             log.error("TG transfer error: %s", e)
-            await msg.reply_text(f"❌ Failed: {e}")
+            # Friendly error in case they encounter the default cloud-hosted API limit of 20 MB
+            if "file is too big" in str(e).lower():
+                await msg.reply_text(
+                    f"❌ Download failed: {e}\n\n"
+                    "⚠️ Notice: The public Telegram Cloud Bot API restricts bot downloads to 20 MB.\n"
+                    "To download files larger than 20 MB, run a local Telegram Bot API server "
+                    "or provide a direct URL down loader command on Bale instead."
+                )
+            else:
+                await msg.reply_text(f"❌ Failed: {e}")
 
     @staticmethod
     def _identify_media(msg):
