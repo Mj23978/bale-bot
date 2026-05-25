@@ -26,8 +26,8 @@ All commands use a step-by-step flow:
 
 ## Large File Handling
 
-Bale limits uploads to **20 MB**. Files larger than 10 MB are automatically:
-- Split into zip parts (~9 MB each)
+Bale limits uploads to **20 MB**. Files larger than 20 MB are automatically:
+- Split into zip parts (~19 MB each)
 - Sent sequentially with clear naming (`filename.part1of3.zip`, …)
 - Include instructions to reassemble after extraction
 
@@ -57,10 +57,6 @@ cp .env.example .env
 
 1. Get a Telegram bot token from [@BotFather](https://t.me/BotFather)
 2. Set `TG_TOKEN` in `.env`
-3. Map Telegram users to Bale users:
-   ```env
-   USER_MAPPING={"123456789": "987654321"}
-   ```
 
 ### 5. Run
 
