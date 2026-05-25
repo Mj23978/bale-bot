@@ -753,7 +753,10 @@ async def main_async():
         return
 
     log.info("Starting Bale Bot Application Loop…")
-    
+
+    # Connect the Bale client on the current event loop
+    await bot.connect()
+
     # Initialize the web server
     await start_web_server()
 
