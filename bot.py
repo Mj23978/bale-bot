@@ -773,7 +773,10 @@ async def main_async():
         await tg.run()
 
     # Start the Bale client polling
-    # (using the internal task manager in Balethon inside our existing event loop)
+    # CRITICAL: Balethon's Dispatcher captures event_loop at module import time.
+    # asyncio.run() creates a NEW loop, so we must rebind it before polling starts
+    # (otherwise dispatcher workers spawn on the wrong loop and handlers never fire).
+    bot.dispatcher.event_loop = asyncio.get_running_loop()
     await bot.start_polling()
 
     # Wait indefinitely
