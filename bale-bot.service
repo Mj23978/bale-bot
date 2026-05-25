@@ -1,0 +1,14 @@
+[Unit]
+Description=Bale Bot
+After=network.target
+
+[Service]
+Type=simple
+WorkingDirectory=/root/workspace/bale-bot
+ExecStart=/usr/bin/python3 bot.py
+Restart=always
+RestartSec=5
+EnvironmentFile=/root/workspace/bale-bot/.env
+
+[Install]
+WantedBy=multi-user.target
